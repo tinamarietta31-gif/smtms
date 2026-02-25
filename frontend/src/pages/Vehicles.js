@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { vehicleAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-toastify';
-import { FiPlus, FiEye, FiStopCircle, FiPlayCircle, FiWifi, FiWifiOff } from 'react-icons/fi';
+import { FiPlus, FiEye, FiStopCircle, FiPlayCircle, FiWifi, FiWifiOff, FiTrash2 } from 'react-icons/fi';
 
 const Vehicles = () => {
   const [vehicles, setVehicles] = useState([]);
@@ -62,6 +62,17 @@ const Vehicles = () => {
     }
   };
 
+  const handleRemove = async (id, regNumber) => {
+    if (!window.confirm(`Are you absolutely sure you want to permanently delete vehicle ${regNumber}?`)) return;
+    try {
+      await vehicleAPI.delete(id);
+      toast.success(`Vehicle ${regNumber} securely removed!`);
+      fetchVehicles();
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Failed to remove vehicle');
+    }
+  };
+
   if (loading) return <div className="loading"><div className="spinner"></div></div>;
 
   return (
@@ -102,11 +113,14 @@ const Vehicles = () => {
             <div className="vc-actions">
               <button className="btn btn-primary btn-sm" onClick={() => navigate(`/vehicles/${v.id}`)}><FiEye /> View</button>
               {isAdmin && (
-                v.ecmStatus === 'stopped' ? (
-                  <button className="btn btn-success btn-sm" onClick={() => handleResume(v.id)}><FiPlayCircle /> Resume</button>
-                ) : (
-                  <button className="btn btn-danger btn-sm" onClick={() => handleStop(v.id)}><FiStopCircle /> Stop</button>
-                )
+                <>
+                  {v.ecmStatus === 'stopped' ? (
+                    <button className="btn btn-success btn-sm" onClick={() => handleResume(v.id)}><FiPlayCircle /> Resume</button>
+                  ) : (
+                    <button className="btn btn-warning btn-sm" onClick={() => handleStop(v.id)}><FiStopCircle /> Stop</button>
+                  )}
+                  <button className="btn btn-danger btn-sm" onClick={() => handleRemove(v.id, v.registrationNumber)}><FiTrash2 /> Remove</button>
+                </>
               )}
             </div>
           </div>

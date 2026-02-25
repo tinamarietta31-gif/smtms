@@ -1,4 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { signInWithPopup, signOut } from 'firebase/auth';
+import { auth as firebaseAuth, googleProvider } from '../firebase';
 import { authAPI } from '../services/api';
 
 const AuthContext = createContext(null);
@@ -28,9 +30,14 @@ export const AuthProvider = ({ children }) => {
     initAuth();
   }, []);
 
-  const login = async (email, password) => {
+  const loginWithGoogle = async () => {
     try {
-      const response = await authAPI.login({ email, password });
+      // Step 1: Sign in with Google via Firebase popup
+      const result = await signInWithPopup(firebaseAuth, googleProvider);
+      const idToken = await result.user.getIdToken();
+
+      // Step 2: Send the Firebase ID token to our backend for verification
+      const response = await authAPI.googleLogin({ idToken });
       const data = response.data;
       const newToken = data.token;
       const newUser = data.user;
@@ -45,8 +52,8 @@ export const AuthProvider = ({ children }) => {
       setUser(newUser);
       return { success: true };
     } catch (error) {
-      console.error('Login error:', error);
-      const message = error.response?.data?.error || error.response?.data?.message || error.message || 'Login failed';
+      console.error('Google login error:', error);
+      const message = error.response?.data?.error || error.message || 'Google login failed';
       return { success: false, error: message };
     }
   };
@@ -56,6 +63,8 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('user');
     setToken(null);
     setUser(null);
+    // Also sign out of Firebase
+    signOut(firebaseAuth).catch(() => { });
   };
 
   const isAdmin = user?.role === 'super_admin' || user?.role === 'admin';
@@ -65,7 +74,7 @@ export const AuthProvider = ({ children }) => {
   }
 
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, isAdmin, isAuthenticated: !!token && !!user }}>
+    <AuthContext.Provider value={{ user, token, loginWithGoogle, logout, isAdmin, isAuthenticated: !!token && !!user }}>
       {children}
     </AuthContext.Provider>
   );

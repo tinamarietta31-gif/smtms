@@ -5,7 +5,7 @@ import L from 'leaflet';
 import { vehicleAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-toastify';
-import { FiArrowLeft, FiStopCircle, FiPlayCircle, FiAlertTriangle } from 'react-icons/fi';
+import { FiArrowLeft, FiMapPin, FiTruck, FiAlertCircle, FiClock, FiSettings, FiWifi, FiWifiOff, FiStopCircle, FiPlayCircle, FiTrash2, FiAlertTriangle } from 'react-icons/fi';
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -62,6 +62,17 @@ const VehicleDetail = () => {
     }
   };
 
+  const handleRemove = async () => {
+    if (!window.confirm(`Are you absolutely sure you want to permanently delete vehicle ${vehicle.registrationNumber}?`)) return;
+    try {
+      await vehicleAPI.delete(id);
+      toast.success(`Vehicle successfully removed!`);
+      navigate('/vehicles');
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Failed to remove vehicle');
+    }
+  };
+
   if (loading) return <div className="loading"><div className="spinner"></div></div>;
   if (!vehicle) return null;
 
@@ -73,11 +84,14 @@ const VehicleDetail = () => {
         <button className="back-btn" onClick={() => navigate('/vehicles')}><FiArrowLeft /> Back to Vehicles</button>
         <div style={{ display: 'flex', gap: 12 }}>
           {isAdmin && (
-            vehicle.ecmStatus === 'stopped' ? (
-              <button className="btn btn-success" onClick={handleResume}><FiPlayCircle /> Resume Vehicle</button>
-            ) : (
-              <button className="btn btn-danger" onClick={handleStop}><FiStopCircle /> Remote Stop</button>
-            )
+            <>
+              {vehicle.ecmStatus === 'stopped' ? (
+                <button className="btn btn-success" onClick={handleResume}><FiPlayCircle /> Resume Vehicle</button>
+              ) : (
+                <button className="btn btn-warning" onClick={handleStop}><FiStopCircle /> Remote Stop</button>
+              )}
+              <button className="btn btn-danger" onClick={handleRemove}><FiTrash2 /> Remove Vehicle</button>
+            </>
           )}
         </div>
       </div>
@@ -85,12 +99,12 @@ const VehicleDetail = () => {
       <div className="card" style={{ marginBottom: 24 }}>
         <div className="card-header">
           <h3 style={{ fontSize: 22 }}>{vehicle.registrationNumber}</h3>
-          <span className={`badge badge-${vehicle.status}`}>{vehicle.status}</span>
+          <span className={`badge badge - ${vehicle.status} `}>{vehicle.status}</span>
         </div>
         <div className="card-body">
           <div className="tabs">
             {['info', 'map', 'trips', 'violations', 'alerts'].map(t => (
-              <button key={t} className={`tab ${tab === t ? 'active' : ''}`} onClick={() => setTab(t)}>
+              <button key={t} className={`tab ${tab === t ? 'active' : ''} `} onClick={() => setTab(t)}>
                 {t.charAt(0).toUpperCase() + t.slice(1)}
               </button>
             ))}
@@ -114,6 +128,12 @@ const VehicleDetail = () => {
               <div className="info-item"><div className="info-label">Remote Stopped</div><div className="info-value">{vehicle.ecmStatus === 'stopped' ? '🔴 Yes' : '🟢 No'}</div></div>
               <div className="info-item"><div className="info-label">Last Seen</div><div className="info-value">{vehicle.lastSeenAt ? new Date(vehicle.lastSeenAt).toLocaleString() : 'Never'}</div></div>
               <div className="info-item"><div className="info-label">Coordinates</div><div className="info-value">{vehicle.currentLatitude?.toFixed(4)}, {vehicle.currentLongitude?.toFixed(4)}</div></div>
+
+              {isAdmin && (
+                <div className="info-item" style={{ gridColumn: '1 / -1', marginTop: '16px', display: 'flex', justifyContent: 'flex-end' }}>
+                  <button className="btn btn-danger" onClick={handleRemove}><FiTrash2 /> Remove Vehicle</button>
+                </div>
+              )}
             </div>
           )}
 
@@ -143,7 +163,7 @@ const VehicleDetail = () => {
                       <td>{t.endTime ? new Date(t.endTime).toLocaleString() : '—'}</td>
                       <td>{t.loadWeight}T</td>
                       <td>{t.distance ? `${t.distance} km` : '—'}</td>
-                      <td><span className={`badge badge-${t.status}`}>{t.status}</span></td>
+                      <td><span className={`badge badge - ${t.status} `}>{t.status}</span></td>
                       <td>{t.isAuthorized ? '✅' : '❌'}</td>
                     </tr>
                   ))}
@@ -161,10 +181,10 @@ const VehicleDetail = () => {
                   {(vehicle.violations || []).map(v => (
                     <tr key={v.id}>
                       <td>{v.type?.replace(/_/g, ' ')}</td>
-                      <td><span className={`badge badge-${v.severity}`}>{v.severity}</span></td>
+                      <td><span className={`badge badge - ${v.severity} `}>{v.severity}</span></td>
                       <td>{v.description?.substring(0, 60)}...</td>
                       <td>{v.challanGenerated ? `${v.challanNumber} (₹${v.challanAmount})` : '—'}</td>
-                      <td><span className={`badge badge-${v.status}`}>{v.status}</span></td>
+                      <td><span className={`badge badge - ${v.status} `}>{v.status}</span></td>
                       <td>{new Date(v.createdAt).toLocaleDateString()}</td>
                     </tr>
                   ))}
@@ -184,7 +204,7 @@ const VehicleDetail = () => {
                     <div className="meta">{a.message}</div>
                     <div className="meta">{new Date(a.createdAt).toLocaleString()}</div>
                   </div>
-                  <span className={`badge badge-${a.severity}`}>{a.severity}</span>
+                  <span className={`badge badge - ${a.severity} `}>{a.severity}</span>
                 </div>
               ))}
               {(!vehicle.alerts || vehicle.alerts.length === 0) && <div className="empty-state"><h3>No alerts</h3></div>}
