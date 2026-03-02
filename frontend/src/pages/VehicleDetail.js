@@ -5,7 +5,7 @@ import L from 'leaflet';
 import { vehicleAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-toastify';
-import { FiArrowLeft, FiMapPin, FiTruck, FiAlertCircle, FiClock, FiSettings, FiWifi, FiWifiOff, FiStopCircle, FiPlayCircle, FiTrash2, FiAlertTriangle } from 'react-icons/fi';
+import { FiArrowLeft, FiStopCircle, FiPlayCircle, FiTrash2, FiAlertTriangle } from 'react-icons/fi';
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({

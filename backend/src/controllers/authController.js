@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
-const { OAuth2Client } = require('google-auth-library');
+const admin = require('../config/firebase');
 const { User } = require('../models');
 const config = require('../config');
 
@@ -8,8 +8,6 @@ const SUPER_ADMIN_EMAILS = [
   'jerimothimmanuel@gmail.com',
   'tinamarietta31@gmail.com',
 ];
-
-const googleClient = new OAuth2Client();
 
 const generateToken = (user) => {
   return jwt.sign({ id: user.id, role: user.role }, config.jwtSecret, { expiresIn: '24h' });
@@ -50,47 +48,53 @@ exports.login = async (req, res) => {
   }
 };
 
-exports.googleLogin = async (req, res) => {
+exports.firebaseLogin = async (req, res) => {
   try {
     const { idToken } = req.body;
 
     if (!idToken) {
-      return res.status(400).json({ error: 'Google ID token is required.' });
+      return res.status(400).json({ error: 'Firebase ID token is required.' });
     }
 
-    // Verify the Google ID token
-    const ticket = await googleClient.verifyIdToken({
-      idToken,
-    });
+    // Verify the Firebase ID token
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
+    const { email, phone_number, name, picture, uid } = decodedToken;
 
-    const payload = ticket.getPayload();
-    const { email, name, picture } = payload;
-
-    if (!email) {
-      return res.status(400).json({ error: 'Could not retrieve email from Google token.' });
+    let identifierQuery = {};
+    if (email) {
+      identifierQuery = { email };
+    } else if (phone_number) {
+      identifierQuery = { phone: phone_number };
+    } else {
+      return res.status(400).json({ error: 'Token missing email or phone number.' });
     }
 
     // Determine role
-    const role = SUPER_ADMIN_EMAILS.includes(email.toLowerCase()) ? 'super_admin' : 'officer';
+    const role = (email && SUPER_ADMIN_EMAILS.includes(email.toLowerCase())) ? 'super_admin' : 'officer';
 
-    // Find or create user
-    let user = await User.findOne({ where: { email } });
+    // Find user
+    let user = await User.findOne({ where: identifierQuery });
 
     if (user) {
-      // Update existing user's avatar and name if changed
-      await user.update({ name: name || user.name, avatarUrl: picture || user.avatarUrl });
+      // Update existing user's avatar, name, phone if available
+      await user.update({
+        name: name || user.name,
+        avatarUrl: picture || user.avatarUrl,
+        phone: phone_number || user.phone
+      });
       // If the user is a super admin email but role was different, fix it
-      if (SUPER_ADMIN_EMAILS.includes(email.toLowerCase()) && user.role !== 'super_admin') {
+      if (email && SUPER_ADMIN_EMAILS.includes(email.toLowerCase()) && user.role !== 'super_admin') {
         await user.update({ role: 'super_admin' });
       }
     } else {
-      // Create new user — generate a random placeholder password hash
-      const randomPass = await bcrypt.hash(Math.random().toString(36), 12);
+      // Create new user — model hooks will handle password hashing
+      const randomPass = Math.random().toString(36).slice(-10);
       user = await User.create({
-        name: name || email.split('@')[0],
-        email,
+        name: name || (email ? email.split('@')[0] : `User_${uid.substring(0, 6)}`),
+        email: email || `${uid}@smtms.local`,
         password: randomPass,
         role,
+        phone: phone_number,
         avatarUrl: picture,
         isActive: true,
       });
@@ -103,13 +107,16 @@ exports.googleLogin = async (req, res) => {
     const token = generateToken(user);
 
     res.json({
-      message: 'Google login successful',
+      message: 'Firebase login successful',
       token,
       user: user.toJSON(),
     });
   } catch (error) {
-    console.error('Google login error:', error);
-    res.status(500).json({ error: 'Google authentication failed.' });
+    console.error('Firebase login error details:', error);
+    res.status(500).json({
+      error: 'Firebase authentication failed.',
+      details: error.message
+    });
   }
 };
 
