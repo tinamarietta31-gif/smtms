@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-toastify';
@@ -11,6 +11,7 @@ const Login = () => {
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
   const [otpSent, setOtpSent] = useState(false);
+  const isAuthenticating = useRef(false);
 
   const { loginWithGoogle, loginWithApple, loginWithEmail, sendOtp, verifyOtp } = useAuth();
   const navigate = useNavigate();
@@ -35,19 +36,26 @@ const Login = () => {
   };
 
   const handleSocialLogin = async (actionFn, providerName) => {
+    // Prevent double clicks cancelling the popup request
+    if (isAuthenticating.current) return;
+    isAuthenticating.current = true;
+
     // We intentionally do NOT set loading to true here initially.
     // React state updates (re-renders) break the synchronous "user gesture" context
     // required by modern browsers to allow popups (like Google/Apple Sign in).
+    const loadingToastId = toast.loading(`Connecting to ${providerName}...`);
     try {
       const result = await actionFn();
       if (result.success) {
-        toast.success(`Successfully logged in with ${providerName}!`);
+        toast.update(loadingToastId, { render: `Successfully logged in with ${providerName}!`, type: "success", isLoading: false, autoClose: 3000 });
         navigate('/dashboard', { replace: true });
       } else {
-        toast.error(result.error || `${providerName} login failed`);
+        toast.update(loadingToastId, { render: result.error || `${providerName} login failed`, type: "error", isLoading: false, autoClose: 4000 });
       }
     } catch (error) {
-      toast.error(`${providerName} login failed. Please try again.`);
+      toast.update(loadingToastId, { render: `${providerName} login failed. Please try again.`, type: "error", isLoading: false, autoClose: 4000 });
+    } finally {
+      isAuthenticating.current = false;
     }
   };
 
@@ -59,10 +67,20 @@ const Login = () => {
 
   const onSendOtp = (e) => {
     e.preventDefault();
-    if (!phone) return toast.error('Please enter a phone number with country code (e.g. +1234567890)');
+    if (!phone) return toast.error('Please enter a phone number');
+
+    // Firebase requires E.164 format. Auto-prepend +91 for India if missing.
+    let formattedPhone = phone.trim();
+    if (!formattedPhone.startsWith('+')) {
+      formattedPhone = '+91' + formattedPhone;
+    }
+
     handleAction(async () => {
-      const result = await sendOtp(phone, 'recaptcha-container');
-      if (result.success) setOtpSent(true);
+      const result = await sendOtp(formattedPhone, 'recaptcha-container');
+      if (result.success) {
+        setPhone(formattedPhone);
+        setOtpSent(true);
+      }
       return result;
     }, 'OTP sent successfully!');
   };
