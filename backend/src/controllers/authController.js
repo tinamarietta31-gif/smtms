@@ -87,17 +87,22 @@ exports.firebaseLogin = async (req, res) => {
         await user.update({ role: 'super_admin' });
       }
     } else {
-      // Create new user — model hooks will handle password hashing
-      const randomPass = Math.random().toString(36).slice(-10);
-      user = await User.create({
-        name: name || (email ? email.split('@')[0] : `User_${uid.substring(0, 6)}`),
-        email: email || `${uid}@smtms.local`,
-        password: randomPass,
-        role,
-        phone: phone_number,
-        avatarUrl: picture,
-        isActive: true,
-      });
+      // Only auto-create if it's a defined super admin email.
+      // All other users (officers, etc) must be manually created by an admin first.
+      if (email && SUPER_ADMIN_EMAILS.includes(email.toLowerCase())) {
+        const randomPass = Math.random().toString(36).slice(-10);
+        user = await User.create({
+          name: name || email.split('@')[0],
+          email: email,
+          password: randomPass,
+          role: 'super_admin',
+          phone: phone_number,
+          avatarUrl: picture,
+          isActive: true,
+        });
+      } else {
+        return res.status(403).json({ error: 'Access denied. Your email is not authorized to access this system. Please contact an administrator.' });
+      }
     }
 
     if (!user.isActive) {
