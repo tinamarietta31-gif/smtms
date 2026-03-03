@@ -1,36 +1,39 @@
 {
   "name": "smtms-frontend",
   "version": "1.0.0",
+  "description": "Smart Mining Transport Monitoring System - Frontend",
   "private": true,
   "dependencies": {
-    "@testing-library/jest-dom": "^5.17.0",
-    "@testing-library/react": "^13.4.0",
-    "@testing-library/user-event": "^13.5.0",
-    "axios": "^1.6.2",
-    "chart.js": "^4.4.1",
-    "firebase": "^12.9.0",
+    "axios": "^1.6.0",
     "leaflet": "^1.9.4",
     "react": "^18.2.0",
-    "react-chartjs-2": "^5.2.0",
     "react-dom": "^18.2.0",
-    "react-icons": "^4.12.0",
     "react-leaflet": "^4.2.1",
-    "react-router-dom": "^6.21.1",
-    "react-scripts": "5.0.1",
-    "react-toastify": "^9.1.3",
-    "socket.io-client": "^4.7.2",
-    "web-vitals": "^2.1.4"
+    "react-router-dom": "^6.20.0",
+    "react-scripts": "5.0.1"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.1.4",
+    "@testing-library/react": "^14.1.2",
+    "@testing-library/user-event": "^13.5.0",
+    "autoprefixer": "^10.4.16",
+    "postcss": "^8.4.32",
+    "tailwindcss": "^3.3.6"
   },
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix",
+    "format": "prettier --write src/",
+    "docker:build": "docker build -t smtms-frontend .",
+    "docker:run": "docker run -p 3000:3000 smtms-frontend"
   },
   "eslintConfig": {
     "extends": [
-      "react-app",
-      "react-app/jest"
+      "react-app"
     ]
   },
   "browserslist": {
@@ -45,5 +48,8 @@
       "last 1 safari version"
     ]
   },
-  "proxy": "http://localhost:5000"
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  }
 }

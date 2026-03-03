@@ -34,7 +34,6 @@ api.interceptors.response.use(
 // Auth
 export const authAPI = {
   login: (data) => api.post('/auth/login', data),
-  firebaseLogin: (data) => api.post('/auth/firebase', data),
   register: (data) => api.post('/auth/register', data),
   getProfile: () => api.get('/auth/profile'),
 };
