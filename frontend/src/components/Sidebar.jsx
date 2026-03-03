@@ -23,10 +23,15 @@ const Sidebar = () => {
           Dashboard
         </Link>
 
-        {hasPermission('ADD_AUTHORITIES') && (
-          <Link to="/authorities" className="block px-4 py-2 rounded hover:bg-gray-800 transition">
-            Manage Authorities
-          </Link>
+        {hasRole('SUPER_ADMIN') && (
+          <>
+            <Link to="/roles" className="block px-4 py-2 rounded hover:bg-gray-800 transition">
+              Manage Roles
+            </Link>
+            <Link to="/authorities" className="block px-4 py-2 rounded hover:bg-gray-800 transition">
+              Manage Authorities
+            </Link>
+          </>
         )}
 
         {(hasPermission('ADD_MEMBERS') || hasRole('OWNER')) && (

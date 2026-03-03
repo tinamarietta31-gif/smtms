@@ -6,6 +6,7 @@ const port = 3000;
 const authRoutes = require('./routes/authRoutes');
 const authorityRoutes = require('./routes/authorityRoutes');
 const memberRoutes = require('./routes/memberRoutes');
+const roleRoutes = require('./routes/roleRoutes');
 
 // Middleware
 app.use(express.json());
@@ -18,6 +19,9 @@ app.use('/api/authorities', authorityRoutes);
 
 // Member/User routes
 app.use('/api/members', memberRoutes);
+
+// Role routes
+app.use('/api/roles', roleRoutes);
 
 app.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`);

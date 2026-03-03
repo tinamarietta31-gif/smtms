@@ -14,6 +14,7 @@ A comprehensive GPS-enabled tracking and monitoring system for vehicles transpor
 - **Advanced Role-Based Access Control** — Super Admin, Owner, and Driver roles with granular permissions
 - **Authority Management** — Super Admins can add/remove authorities and manage all system resources
 - **Multi-Level Access** — Hierarchical permission system for secure operations
+- **Custom Role Management** — Super Admins can create custom roles with specific permission combinations
 
 ## Tech Stack
 
@@ -112,6 +113,13 @@ python app.py
 ### Auth
 - `POST /api/auth/login` — Login
 - `POST /api/auth/register` — Register (admin only)
+
+### Roles (Super Admin Only)
+- `GET /api/roles` — List all roles
+- `POST /api/roles` — Create new role
+- `GET /api/roles/:id` — Get role details
+- `PUT /api/roles/:id` — Update role
+- `DELETE /api/roles/:id` — Delete role
 
 ### Authorities (Super Admin Only)
 - `GET /api/authorities` — List all authorities
