@@ -1,29 +1,22 @@
-const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
 
-// Generate JWT Token
-const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRE || '7d'
-  });
-};
-
-// Authenticate user and create JWT
-exports.authenticate = async (req, res, next) => {
+// Login
+exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
+    // Validation
     if (!email || !password) {
       return res.status(400).json({
         success: false,
-        message: 'Please provide email and password'
+        message: 'Email and password are required'
       });
     }
 
-    const user = await User.findOne({ email })
-      .populate('role')
-      .populate('authority');
-
+    // Find user
+    const user = await User.findOne({ email }).select('+password');
     if (!user) {
       return res.status(401).json({
         success: false,
@@ -31,7 +24,8 @@ exports.authenticate = async (req, res, next) => {
       });
     }
 
-    const isPasswordValid = await user.matchPassword(password);
+    // Check password
+    const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       return res.status(401).json({
         success: false,
@@ -39,19 +33,12 @@ exports.authenticate = async (req, res, next) => {
       });
     }
 
-    if (user.status === 'SUSPENDED') {
-      return res.status(403).json({
-        success: false,
-        message: 'Account has been suspended'
-      });
-    }
-
-    const token = generateToken(user._id);
-
-    // Update last login
-    user.metadata.lastLogin = new Date();
-    user.metadata.loginCount += 1;
-    await user.save();
+    // Generate JWT
+    const token = jwt.sign(
+      { userId: user._id, email: user.email, role: user.role },
+      process.env.JWT_SECRET || 'your_secret_key',
+      { expiresIn: process.env.JWT_EXPIRE || '7d' }
+    );
 
     res.status(200).json({
       success: true,
@@ -59,49 +46,93 @@ exports.authenticate = async (req, res, next) => {
       token,
       user: {
         id: user._id,
-        firstName: user.firstName,
-        lastName: user.lastName,
         email: user.email,
-        role: user.role.name,
-        authority: user.authority.name,
-        permissions: user.role.permissions
+        role: user.role,
+        name: user.name
       }
     });
   } catch (error) {
+    console.error('Login error:', error);
     res.status(500).json({
       success: false,
-      message: error.message
+      message: error.message || 'Login failed'
     });
   }
 };
 
-// Verify JWT token
-exports.verifyToken = async (req, res, next) => {
+// Register (Admin only)
+exports.register = async (req, res) => {
   try {
-    const token = req.headers.authorization?.split(' ')[1];
+    const { email, password, name, role } = req.body;
 
-    if (!token) {
+    // Validation
+    if (!email || !password || !name) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email, password, and name are required'
+      });
+    }
+
+    // Check if user exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: 'User already exists'
+      });
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Create user
+    const user = new User({
+      email,
+      password: hashedPassword,
+      name,
+      role: role || 'DRIVER'
+    });
+
+    await user.save();
+
+    res.status(201).json({
+      success: true,
+      message: 'User registered successfully',
+      user: {
+        id: user._id,
+        email: user.email,
+        name: user.name,
+        role: user.role
+      }
+    });
+  } catch (error) {
+    console.error('Register error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Registration failed'
+    });
+  }
+};
+
+// Verify Token Middleware
+exports.verifyToken = (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({
         success: false,
         message: 'No token provided'
       });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findById(decoded.id)
-      .populate('role')
-      .populate('authority');
-
-    if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: 'User not found'
-      });
-    }
-
-    req.user = user;
+    const token = authHeader.substring(7);
+    
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your_secret_key');
+    req.user = decoded;
     next();
   } catch (error) {
+    console.error('Token verification error:', error);
     res.status(401).json({
       success: false,
       message: 'Invalid or expired token'
@@ -109,4 +140,4 @@ exports.verifyToken = async (req, res, next) => {
   }
 };
 
-module.exports = { generateToken };
+module.exports = exports;
